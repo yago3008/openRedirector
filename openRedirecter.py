@@ -15,13 +15,13 @@ def arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--url', type=str, help='URL.')
     parser.add_argument('-l', '--list', type=str, help='List of URLs.')
-    parser.add_argument('-w', '--wordlist', type=str, required=True, help='Path to wordlist.')
-    parser.add_argument('-t', '--time', type=float, default=0, help='Time delay between requests.')
+    parser.add_argument('-w', '--wordlist', type=str, help='Path to wordlist.')
+    parser.add_argument('-t', '--time', type=float, default=0.5, help='Time delay between requests.')
     parser.add_argument('-T','--threads', type=int, default=2, help='Number of threads to use.')
     args = parser.parse_args()
     return args
 
-def get_payloads(file):
+def get_payloads(file='openredirect.txt'):
     try:
         with open(file, 'r', encoding='utf-8') as f:
             payloads = f.read().splitlines()
@@ -87,5 +87,5 @@ if __name__ == '__main__':
             print(f"{RED}Error: you must provide a url/list or pipe the URLs via stdin.{DEFAULT}")
             exit(1)
 
-    payloads = get_payloads(args.wordlist)
+    payloads = get_payloads(args.wordlist)  if args.wordlist else get_payloads()
     thread_requester(urls, payloads, time=args.time, num_threads=args.threads)
