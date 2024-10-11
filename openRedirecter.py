@@ -1,7 +1,9 @@
+import sys
 import requests as req
 import argparse
 import os
 from time import sleep
+import threading
 
 RED = '\033[91m'
 GREEN = '\033[92m'
@@ -13,6 +15,7 @@ def arg_parser():
     parser.add_argument('-l', '--list', type=str, help='List of URLs.')
     parser.add_argument('-w', '--wordlist', type=str, required=True, help='Path to wordlist.')
     parser.add_argument('-t', '--time', type=float, default=0, help='Time delay between requests.')
+    parser.add_argument('-T','--threads', type=int, default=2, help='Number of threads to use.')
     args = parser.parse_args()
     return args
 
@@ -42,21 +45,45 @@ def requester(urls, payloads, time):
                 full_url = url + payload
                 response = req.get(full_url, allow_redirects=True)
                 if response.history:
-                    print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
+                    if len(response.history) <= 1:
+                        print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
                 else:
                     print(f'{RED}[-] NO REDIRECT FOUND: {full_url}{DEFAULT}')
-            except:
+            except Exception as e:
+                print(f"{RED}Error: {e}{DEFAULT}")
                 pass
+
+def thread_requester(urls, payloads, time, num_threads):
+    chunk_size = len(urls) // num_threads
+    threads = []
+    
+    for i in range(num_threads):
+        start = i * chunk_size
+        if i == num_threads - 1:
+            end = len(urls)
+        else:
+            end = (i + 1) * chunk_size
+
+        thread = threading.Thread(target=requester, args=(urls[start:end], payloads, time))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
 
 if __name__ == '__main__':
     args = arg_parser()
+
     if args.url:
         urls = [args.url]
     elif args.list:
         urls = load_urls(args.list)
     else:
-        print(f"{RED}Error: you may to give a url/list.{DEFAULT}")
-        exit(1)
+        if not sys.stdin.isatty():
+            urls = [url.strip() for url in sys.stdin.readlines()]
+        else:
+            print(f"{RED}Error: you must provide a url/list or pipe the URLs via stdin.{DEFAULT}")
+            exit(1)
 
     payloads = get_payloads(args.wordlist)
-    requester(urls, payloads, time=args.time)
+    thread_requester(urls, payloads, time=args.time, num_threads=args.threads)
