@@ -21,7 +21,7 @@ def arg_parser():
     args = parser.parse_args()
     return args
 
-def get_payloads(file='openredirect.txt'):
+def get_payloads(file='payloads.txt'):
     try:
         with open(file, 'r', encoding='utf-8') as f:
             payloads = f.read().splitlines()
