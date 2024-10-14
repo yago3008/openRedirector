@@ -49,7 +49,7 @@ You can add a custom wordlist by using the ```-w``` flag and specifying worlist 
 ▶ cat domains.txt | ./openredirector.py -w /usr/share/wordlists/exemple.txt
 ```
 
-### Custom wordlist
+### Custom threads
 You can add Threads to scan faster by using the ```-T``` flag and specifying threads quantity:
 ```
 ▶ cat domains.txt | ./openredirector.py -T 10
