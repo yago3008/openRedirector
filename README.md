@@ -11,7 +11,7 @@ Toll for auto-openredirect discovery.
 
 # Usage exemple
 
-### Basic exemple STDIN URLs:
+### Basic exemple STDIN URLs + --silent:
 openRedirector accepts feeding via STDIN, and has a default worlist.
 ```
 ▶ cat domains.txt
@@ -19,8 +19,7 @@ http://example.com/redirect?redirect=
 http://example.edu/redirect?url=
 http://example.net/redirect?goto=
 
-▶ cat domains.txt | ./openredirector.py
-[-] NO REDIRECT FOUND: http://example.com/redirect?redirect==/%09/example.com
+▶ cat domains.txt | ./openredirector.py --silent
 [+] REDIRECT FOUND: http://example.edu/redirect?url=/%2f%2fexample.com
 [+] REDIRECT FOUND: http://example.net/redirect?goto=/%2f%2fexample.com
 ```
@@ -35,6 +34,14 @@ You can add a URL list by using the ```-l``` flag and specifying URL path:
 You can add a single target by using the ```-u``` flag and specifying target:
 ```
 ▶ ./openredirector.py -u http://example.com/redirect?redirect=
+```
+
+### Check-code
+You can check response code for custom redirects:
+```
+▶ ./openredirector.py -u http://example.com/redirect?redirect= -cc 200
+[+] REDIRECT FOUND: http://example.edu/redirect?url=/%2f%2fexample.com
+[+] REDIRECT FOUND: http://example.net/redirect?goto=/%2f%2fexample.com
 ```
 
 ### Timeout
