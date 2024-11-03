@@ -37,7 +37,7 @@ You can add a single target by using the ```-u``` flag and specifying target:
 ```
 
 ### Check-code
-You can check response code for custom redirects:
+You can check response code for custom redirects using the ```-cc``` flag and specifying custom response code:
 ```
 ▶ ./openredirector.py -u http://example.com/redirect?redirect= -cc 200
 [+] REDIRECT FOUND: http://example.edu/redirect?url=/%2f%2fexample.com
