@@ -17,7 +17,7 @@ def arg_parser():
     parser.add_argument('-u', '--url', type=str, help='URL.')
     parser.add_argument('-l', '--list', type=str, help='List of URLs.')
     parser.add_argument('-w', '--wordlist', type=str, help='Path to wordlist.')
-    parser.add_argument('-t', '--time', type=float, default=0.5, help='Time delay between requests.')
+    parser.add_argument('-t', '--time', type=float, default=0.3, help='Time delay between requests.')
     parser.add_argument('-T','--threads', type=int, default=2, help='Number of threads to use.')
     parser.add_argument('-cc', '--check-code', type=int, default=300,
                     help="Expected initial response code (200 for manual, 300 for automatic, 300+ for custom)")
@@ -26,7 +26,7 @@ def arg_parser():
     return args
 
 def add_domain_in_file(arg_domain, file='payloads.txt'):
-
+    
     domain = arg_domain.replace("https://", "").replace("http://", "")
     domain = domain.split('/')[0]
     try:
@@ -34,27 +34,28 @@ def add_domain_in_file(arg_domain, file='payloads.txt'):
             content = f.read().replace("FUZZ", domain)
         with open(f'payload_makeup', 'w+', encoding='utf-8') as f:
             f.write(content)
-    except Exception as e:
+    except:
         pass
 
 
-def get_payloads(file='payload_makeup'):
+def get_payloads(arg_file=False, file='payload_makeup'):
     try:
-        with open(file, 'r', encoding='utf-8') as f:
+        if not arg_file:
+            with open(file, 'r', encoding='utf-8') as f:
+                payloads = f.read().splitlines()
+            return payloads
+        with open(arg_file, 'r', encoding='utf-8') as f:
             payloads = f.read().splitlines()
         return payloads
     except FileNotFoundError:
         print(f"{RED}Error: File '{file}' not found.{DEFAULT}")
         exit(1)
 
-def load_urls(file):
-    try:
-        with open(file, 'r', encoding='utf-8') as f:
-            urls = f.read().splitlines()
-        return urls
-    except FileNotFoundError:
-        print(f"{RED}Error: File '{file}' not found.{DEFAULT}")
-        exit(1)
+def print_redirect_status(found, full_url, status_code, silent):
+    if found:
+        print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
+    elif not silent:
+        print(f'{RED}[-] NO REDIRECT FOUND: {full_url} [{status_code}]{DEFAULT}')
 
 def requester(urls, payloads, time, code, silent):
 
@@ -67,36 +68,21 @@ def requester(urls, payloads, time, code, silent):
             try:
                 sleep(time)
                 full_url = url + payload
-                response = req.get(full_url, allow_redirects=True, headers=headers)
+                res = req.get(full_url, allow_redirects=True, headers=headers)
 
                 if code == 200:
-                    if response.status_code == 200:
-                        print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
-                    else:
-                        if not silent:
-                            print(f'{RED}[-] NO REDIRECT FOUND: {full_url} {[response.status_code]}{DEFAULT}')
+                    print_redirect_status(res.status_code == code, full_url, res.status_code, silent)
 
-                if code != 200 and code != 300:
-                    if response.status_code == code:
-                        print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
-                    else:
-                        if not silent:
-                            print(f'{RED}[-] NO REDIRECT FOUND: {full_url} {[response.status_code]}{DEFAULT}')
-                        
-                        
-                elif 300 <= code < 400:  
-                    if response.history:
-                        if len(response.history) <= 1:
-                            print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
-                    else:
-                        if not silent:
-                            print(f'{RED}[-] NO REDIRECT FOUND: {full_url} {[response.status_code]}{DEFAULT}')
-                        
+                elif code == res.status_code or (300 <= code < 400 and res.history and len(res.history) <= 1):
+                    print_redirect_status(True, full_url, res.status_code, silent)
+                else:
+                    print_redirect_status(False, full_url, res.status_code, silent)
+
             except Exception as e:
-                print(f"{RED}Error: {e}{DEFAULT}")
+                if not silent: print(f"{RED}Error: {e}{DEFAULT}")
                 pass
 
-def thread_requester(urls, payloads, time, num_threads, code, silent=False):
+def thread_requester(urls, payloads, time, num_threads, code, silent):
     chunk_size = len(urls) // num_threads
     threads = []
     
@@ -121,8 +107,7 @@ if __name__ == '__main__':
         urls = [args.url]
         add_domain_in_file(args.url)
     elif args.list:
-        urls = load_urls(args.list)
-        print(urls)
+        urls = get_payloads(args.list)
         add_domain_in_file(urls[0])
     else:
         if not sys.stdin.isatty():
