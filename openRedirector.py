@@ -20,19 +20,20 @@ def arg_parser():
     parser.add_argument('-t', '--time', type=float, default=0.3, help='Time delay between requests.')
     parser.add_argument('-T','--threads', type=int, default=2, help='Number of threads to use.')
     parser.add_argument('-cc', '--check-code', type=int, default=300,
-                    help="Expected initial response code (200 for manual, 300 for automatic, 300+ for custom)")
+                        help="Expected initial response code (200 for manual, 300 for automatic, 300+ for custom)")
+    parser.add_argument('--cookies', type=str, help='Cookies in the format "name=value; name2=value2".')
     parser.add_argument('--silent', action='store_true', help='Enable silent mode (no output).')
     args = parser.parse_args()
     return args
 
+
 def add_domain_in_file(arg_domain, file='payloads.txt'):
-    
     domain = arg_domain.replace("https://", "").replace("http://", "")
     domain = domain.split('/')[0]
     try:
         with open(file, 'r', encoding='utf-8') as f:
             content = f.read().replace("FUZZ", domain)
-        with open(f'payload_makeup', 'w+', encoding='utf-8') as f:
+        with open('payload_makeup', 'w+', encoding='utf-8') as f:
             f.write(content)
     except:
         pass
@@ -51,24 +52,35 @@ def get_payloads(arg_file=False, file='payload_makeup'):
         print(f"{RED}Error: File '{file}' not found.{DEFAULT}")
         exit(1)
 
+
+def parse_cookies(cookie_string):
+    cookies = {}
+    if cookie_string:
+        pairs = cookie_string.split('; ')
+        for pair in pairs:
+            name, value = pair.split('=', 1)
+            cookies[name] = value
+    return cookies
+
+
 def print_redirect_status(found, full_url, status_code, silent):
     if found:
         print(f'{GREEN}[+] REDIRECT FOUND: {full_url}{DEFAULT}')
     elif not silent:
         print(f'{RED}[-] NO REDIRECT FOUND: {full_url} [{status_code}]{DEFAULT}')
 
-def requester(urls, payloads, time, code, silent):
 
+def requester(urls, payloads, time, code, cookies, silent):
     headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     
     for url in urls:
         for payload in payloads:
             try:
                 sleep(time)
                 full_url = url + payload
-                res = req.get(full_url, allow_redirects=True, headers=headers)
+                res = req.get(full_url, allow_redirects=True, headers=headers, cookies=cookies)
 
                 if code == 200:
                     print_redirect_status(res.status_code == code, full_url, res.status_code, silent)
@@ -82,7 +94,8 @@ def requester(urls, payloads, time, code, silent):
                 if not silent: print(f"{RED}Error: {e}{DEFAULT}")
                 pass
 
-def thread_requester(urls, payloads, time, num_threads, code, silent):
+
+def thread_requester(urls, payloads, time, num_threads, code, cookies, silent):
     chunk_size = len(urls) // num_threads
     threads = []
     
@@ -93,12 +106,13 @@ def thread_requester(urls, payloads, time, num_threads, code, silent):
         else:
             end = (i + 1) * chunk_size
 
-        thread = threading.Thread(target=requester, args=(urls[start:end], payloads, time, code, silent))
+        thread = threading.Thread(target=requester, args=(urls[start:end], payloads, time, code, cookies, silent))
         threads.append(thread)
         thread.start()
 
     for thread in threads:
         thread.join()
+
 
 if __name__ == '__main__':
     args = arg_parser()
@@ -117,5 +131,6 @@ if __name__ == '__main__':
             print(f"{RED}Error: you must provide a url/list or pipe the URLs via stdin.{DEFAULT}")
             exit(1)
 
-    payloads = get_payloads(args.wordlist)  if args.wordlist else get_payloads()
-    thread_requester(urls, payloads, time=args.time, num_threads=args.threads, code=args.check_code, silent=args.silent)
+    payloads = get_payloads(args.wordlist) if args.wordlist else get_payloads()
+    cookies = parse_cookies(args.cookies) if args.cookies else {}
+    thread_requester(urls, payloads, time=args.time, num_threads=args.threads, code=args.check_code, cookies=cookies, silent=args.silent)
